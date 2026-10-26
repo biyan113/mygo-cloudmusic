@@ -10,6 +10,7 @@ import (
 	"math/cmplx"
 	"net/http"
 	"os"
+	"sort"
 	"sync"
 
 	"github.com/egoist/mygo/audio"
@@ -315,8 +316,13 @@ func openStream(dl *download, durationMs int64) (stream, error) {
 	return openMP3Stream(dl, durationMs)
 }
 
-// mp3Stream decodes a download for package audio, seeking by bytes: songs
-// are encoded at a constant bit rate, so time and bytes are in proportion.
+type mp3Frame struct {
+	off int64
+	at  int64
+}
+
+// mp3Stream decodes a download for package audio. Local files carry a frame
+// index for exact seeks; remote constant-bitrate streams seek by bytes.
 // It also measures the spectrum of what it decodes, for the visualizers.
 type mp3Stream struct {
 	dl      *download
@@ -324,6 +330,7 @@ type mp3Stream struct {
 	rate    int
 	frames  int64 // the song's length in frames, from its duration
 	start   int64 // the first audio frame's byte, after the ID3 tag
+	index   []mp3Frame
 	pos     int64 // the frame decoded next
 	skip    int   // bytes of decoded audio to drop after a seek
 	buf     []byte
@@ -397,9 +404,26 @@ func (s *mp3Stream) Read(dst []float32) (int, error) {
 // noise, as loud as the loudest sound.
 const preroll = 4 * 1152
 
+func (s *mp3Stream) seekOffset(frame int64) int64 {
+	off, _ := s.seekPosition(frame)
+	return off
+}
+
+func (s *mp3Stream) seekPosition(frame int64) (int64, int64) {
+	from := max(int64(0), frame-preroll)
+	i := sort.Search(len(s.index), func(i int) bool { return s.index[i].at > from }) - 1
+	if i < 0 {
+		return 0, 0
+	}
+	return s.index[i].off, s.index[i].at
+}
+
 func (s *mp3Stream) SetPosition(frame int64) error {
 	var off int64
-	if from := frame - preroll; from > 0 && s.frames > 0 {
+	decodedFrom := max(int64(0), frame-preroll)
+	if len(s.index) > 0 {
+		off, decodedFrom = s.seekPosition(frame)
+	} else if from := frame - preroll; from > 0 && s.frames > 0 {
 		size := s.dl.size
 		if size <= 0 {
 			size = s.dl.waitFor(math.MaxInt64)
@@ -414,7 +438,7 @@ func (s *mp3Stream) SetPosition(frame int64) error {
 	s.dec, s.pos = dec, frame
 	// Drop what comes before frame: the preroll, or near the start, all
 	// of it from there.
-	s.skip = int(min(frame, preroll)) * 4
+	s.skip = int(frame-decodedFrom) * 4
 	return nil
 }
 

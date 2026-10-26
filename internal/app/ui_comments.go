@@ -31,6 +31,10 @@ const commentPage = 30
 // pane's tab.
 func (a *app) commentsFor(tr *netease.Track) *commentState {
 	cs := &a.comments
+	if tr.IsLocal() {
+		*cs = commentState{track: tr.ID, loaded: true}
+		return cs
+	}
 	if cs.track != tr.ID {
 		*cs = commentState{track: tr.ID}
 		a.loadComments()

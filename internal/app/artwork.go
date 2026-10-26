@@ -8,6 +8,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -15,6 +16,7 @@ import (
 	_ "golang.org/x/image/webp"
 
 	"netease-music-mygo/internal/netease"
+	"netease-music-mygo/internal/player"
 )
 
 // artwork is a cover, decoded and ready to draw, with what the player
@@ -115,10 +117,15 @@ func (c *artCache) get(url string, backdrop bool) *artwork {
 // frame that first shows it, and the smaller copies it shows from there.
 const artRelease = 2 * time.Second
 
-// loadArt fetches the cover at url, as a bitmap to draw and an image to
-// measure.
+// loadArt loads a local embedded cover or fetches an online one.
 func loadArt(url string) (*ui.Bitmap, image.Image, error) {
-	b, err := netease.Fetch(url)
+	var b []byte
+	var err error
+	if path, ok := strings.CutPrefix(url, player.LocalArtworkScheme); ok {
+		b, err = player.LocalArtwork(path)
+	} else {
+		b, err = netease.Fetch(url)
+	}
 	if err != nil {
 		return nil, nil, err
 	}

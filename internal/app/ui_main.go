@@ -172,6 +172,7 @@ func (a *app) sidebar(c *ui.Context) {
 			a.navItem(c, iconDaily, "每日推荐", route{page: pageDaily})
 			a.navItem(c, iconRadio, "私人 FM", route{page: pageFM})
 			a.navItem(c, iconCharts, "排行榜", route{page: pageCharts})
+			a.navItem(c, iconNote, "本地音乐", route{page: pageLocal})
 			if a.searched != "" {
 				a.navItem(c, iconSearch, "搜索结果", route{page: pageSearch})
 			}
@@ -343,6 +344,8 @@ func (a *app) content(c *ui.Context) {
 		a.searchPage(c)
 	case pageFM:
 		a.fmPage(c)
+	case pageLocal:
+		a.localPage(c)
 	}
 }
 

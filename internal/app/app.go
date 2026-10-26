@@ -20,6 +20,7 @@ const (
 	pagePlaylist
 	pageSearch
 	pageFM
+	pageLocal
 )
 
 type route struct {
@@ -58,6 +59,10 @@ type app struct {
 	charts      []netease.Playlist
 	homeErr     string
 	homeLoading bool
+
+	local       []netease.Track
+	localErr    string
+	nextLocalID int64
 
 	playlists map[int64]*netease.Playlist
 	loadingPl map[int64]bool

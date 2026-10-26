@@ -40,6 +40,15 @@ func (a *app) setMenu() {
 	mygo.App.SetMenu(mygo.NewMenu([]*mygo.MenuItem{
 		{Label: name, Submenu: appMenu},
 		{Label: "文件", Submenu: []*mygo.MenuItem{
+			{Label: "打开本地音乐…", Accelerator: "CmdOrCtrl+O", Click: run(func() {
+				a.showMain()
+				go a.chooseLocal()
+			})},
+			{Label: "打开音乐文件夹…", Accelerator: "CmdOrCtrl+Shift+O", Click: run(func() {
+				a.showMain()
+				go a.chooseLocalFolder()
+			})},
+			mygo.Separator(),
 			{Label: "新建歌单…", Accelerator: "CmdOrCtrl+N", Click: run(func() {
 				a.showMain()
 				a.nowPlaying = false

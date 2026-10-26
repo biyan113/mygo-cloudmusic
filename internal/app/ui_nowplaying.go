@@ -102,6 +102,9 @@ func (a *app) nowPlayingView(c *ui.Context) {
 
 func (a *app) nowPlayingBody(c *ui.Context, tr *netease.Track, art *artwork, accent ui.Color, w, h float32, pointerIn bool) {
 	pl := a.pl
+	if tr.IsLocal() && a.npPane == paneComments {
+		a.npPane = paneLyrics
+	}
 	a.commentsFor(tr)
 	if a.npPane != paneQueue {
 		a.queueAt = -1
@@ -225,7 +228,9 @@ func (a *app) paneTabs(c *ui.Context) {
 	a.paneTab(c, paneLyrics, "歌词")
 	a.paneTab(c, paneStage, "律动")
 	a.paneTab(c, paneQueue, "待播清单")
-	a.paneTab(c, paneComments, a.commentsTab())
+	if tr := a.pl.Current(); tr == nil || !tr.IsLocal() {
+		a.paneTab(c, paneComments, a.commentsTab())
+	}
 }
 
 // radioChip says which radio plays, over the title: a click on it, or on

@@ -33,13 +33,14 @@ type Album struct {
 }
 
 type Track struct {
-	ID       int64    `json:"id"`
-	Name     string   `json:"name"`
-	Artists  []Artist `json:"ar"`
-	Album    Album    `json:"al"`
-	Duration int64    `json:"dt"` // milliseconds
-	Fee      int      `json:"fee"`
-	Alias    []string `json:"alia"`
+	ID        int64    `json:"id"`
+	Name      string   `json:"name"`
+	Artists   []Artist `json:"ar"`
+	Album     Album    `json:"al"`
+	Duration  int64    `json:"dt"` // milliseconds
+	LocalPath string   `json:"localPath,omitempty"`
+	Fee       int      `json:"fee"`
+	Alias     []string `json:"alia"`
 	// Reason says why a daily recommendation was picked.
 	Reason string `json:"reason"`
 	// Privilege is what the listener may do with the track, if known.
@@ -85,6 +86,8 @@ func (t *Track) Playable() bool {
 	}
 	return t.Fee != 1 && t.Fee != 4
 }
+
+func (t *Track) IsLocal() bool { return t.LocalPath != "" }
 
 func (t *Track) Length() time.Duration { return time.Duration(t.Duration) * time.Millisecond }
 
@@ -408,8 +411,8 @@ func Lyrics(id int64) (lrc, translation, yrc string, err error) {
 
 // Sized asks the image CDN for a picture of n×n pixels.
 func Sized(pic string, n int) string {
-	if pic == "" {
-		return ""
+	if pic == "" || strings.HasPrefix(pic, "local-art:") {
+		return pic
 	}
 	pic = strings.Replace(pic, "http://", "https://", 1)
 	return fmt.Sprintf("%s?param=%dy%d", pic, n, n)

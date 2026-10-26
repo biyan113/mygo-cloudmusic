@@ -576,30 +576,52 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 	p.announce(&t, nil)
 	p.refill()
 
-	go func() {
-		cover, err := netease.Fetch(netease.Sized(t.Album.PicURL, 600))
-		if err == nil {
+	if t.IsLocal() {
+		go func() {
+			cover, err := LocalArtwork(t.LocalPath)
+			if err == nil {
+				p.post(func() {
+					if gen == p.gen {
+						p.announce(&t, cover)
+					}
+				})
+			}
+		}()
+		go func() {
+			lines := localSyncedLyrics(t.LocalPath, t.Duration)
 			p.post(func() {
 				if gen == p.gen {
-					p.announce(&t, cover)
+					p.lyrics = lines
+					p.lyricsLoaded = true
 				}
 			})
-		}
-	}()
-
-	go func() {
-		lrc, trans, yrc, err := netease.Lyrics(t.ID)
-		var lines []lyrics.Line
-		if err == nil {
-			lines = lyrics.Build(lrc, trans, yrc)
-		}
-		p.post(func() {
-			if gen == p.gen {
-				p.lyrics = lines
-				p.lyricsLoaded = true
+		}()
+	} else {
+		go func() {
+			cover, err := netease.Fetch(netease.Sized(t.Album.PicURL, 600))
+			if err == nil {
+				p.post(func() {
+					if gen == p.gen {
+						p.announce(&t, cover)
+					}
+				})
 			}
-		})
-	}()
+		}()
+
+		go func() {
+			lrc, trans, yrc, err := netease.Lyrics(t.ID)
+			var lines []lyrics.Line
+			if err == nil {
+				lines = lyrics.Build(lrc, trans, yrc)
+			}
+			p.post(func() {
+				if gen == p.gen {
+					p.lyrics = lines
+					p.lyricsLoaded = true
+				}
+			})
+		}()
+	}
 	go func() {
 		level := "exhigh"
 		if p.Quality != nil {
@@ -662,9 +684,12 @@ func (p *Player) loadSkipping(at, skipped int, play bool, from time.Duration) {
 	}()
 }
 
-// open opens track t's audio at level: kept in the cache, or else
-// streamed into it, and kept once it has all come in.
+// open opens track t's audio from its local file, the cache, or a stream.
 func (p *Player) open(t netease.Track, level string) (*netease.Stream, stream, error) {
+	if t.IsLocal() {
+		s, err := openLocalFile(t.LocalPath, t.Duration)
+		return nil, s, err
+	}
 	dl, info, ok := p.Cache.lookup(t.ID, level)
 	if !ok {
 		var err error
